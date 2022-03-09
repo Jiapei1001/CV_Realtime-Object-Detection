@@ -68,4 +68,45 @@ double classify::calculateStdDev(vector<double> &data) {
     return sqrt(squareDistSum / n);
 }
 
+// Compare with image's feature in db and standard diviated feature, to find the closest feature's label
+string classify::classifyObject(Feature &src, map<string, vector<Feature>> &db, Feature stdDevFeature) {
+    string res = "unknown";
 
+    double minDist = 1000;
+
+    // https://stackoverflow.com/questions/26281979/c-loop-through-map
+    for (auto const &[key, val] : db) {
+        double dist = 0.0;
+        for (Feature cmpFeature : val) {
+            dist += classify::euclideanDist(src, cmpFeature, stdDevFeature);
+        }
+        dist /= (double)val.size();
+
+        if (dist < minDist) {
+            res = key;
+            minDist = dist;
+        }
+    }
+
+    return res;
+}
+
+// Calculate Euclidean Distance
+double classify::euclideanDist(Feature &src, Feature &cmp, Feature &stdDevFeature) {
+    double dist = 0.0;
+
+    dist += fabs(src.fillRatio - cmp.fillRatio) / stdDevFeature.fillRatio;
+    dist += fabs(src.bboxDimRatio - cmp.bboxDimRatio) / stdDevFeature.bboxDimRatio;
+    dist += fabs(src.axisDimRatio - cmp.axisDimRatio) / stdDevFeature.axisDimRatio;
+
+    // normalize 6 buckets of hu moments
+    double sumSrc = 0.0, sumCmp = 0.0, sumStdDev = 0.0;
+    for (int i = 0; i < 6; i++) {
+        sumSrc += src.huMoments[i] * src.huMoments[i];
+        sumCmp += cmp.huMoments[i] * cmp.huMoments[i];
+        sumStdDev += stdDevFeature.huMoments[i] * stdDevFeature.huMoments[i];
+    }
+    dist += fabs(sqrt(sumSrc) - sqrt(sumCmp)) / (sqrt(sumStdDev));
+
+    return dist;
+}

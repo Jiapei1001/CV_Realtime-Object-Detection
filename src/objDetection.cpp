@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
     cout << "training images & labels are loaded. \n"
          << std::endl;
 
+    // get mean feature vector
     Feature standardFeature = classify::calculateFeatureStdDev(traingImgData);
     cout << "fill: " << standardFeature.fillRatio << endl;
     cout << "bbox: " << standardFeature.bboxDimRatio << endl;
@@ -60,7 +61,13 @@ int main(int argc, char *argv[]) {
         cout << "hu:   " << standardFeature.huMoments[i] << endl;
     }
 
-    // get mean feature vector
+    // get training images' map of labels
+    map<string, vector<Feature>> db;
+    for (ImgData i : traingImgData) {
+        db[i.label].push_back(i.features);
+    }
+    // classify
+    // classify::classifyObject(src, db, standardFeature);
 
     // vector<pair<Mat, Mat>> res = image::thresholdImages(images);
     // vector<Mat> results;
