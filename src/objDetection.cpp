@@ -29,9 +29,19 @@ int main(int argc, char *argv[]) {
     vector<cv::Mat> images;
     char dirname[256];
 
-    strcpy(dirname, "../data/");
+    strcpy(dirname, "../data/testing");
     process::loadImages(images, dirname);
     cout << "number of images: " << images.size() << "\n\n";
+
+    vector<cv::Mat> trainingImgs;
+    vector<std::string> labels;
+    char trainingDir[256];
+    strcpy(trainingDir, "../data/training");
+    process::loadTrainingImages(trainingImgs, trainingDir, labels);
+
+    for (int i = 0; i < labels.size(); i++) {
+        cout << i << ":  " << labels[i] << "\n";
+    }
 
     // vector<pair<Mat, Mat>> res = image::thresholdImages(images);
     // vector<Mat> results;

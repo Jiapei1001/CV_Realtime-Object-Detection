@@ -30,17 +30,19 @@ struct ImgData {
 
 namespace image {
 
+// threshold & clean up
 int blur5x5(cv::Mat &src, cv::Mat &dst);
 Mat thresholdImage(Mat &image);
 vector<pair<Mat, Mat>> thresholdImages(vector<Mat> &images);
 cv::Mat cleanUpBinary(cv::Mat &image);
 
+// regions
 pair<Mat, int> connectedComponents(Mat &src);
 vector<pair<Mat, Mat>> connectedComponentsImages(vector<Mat> &images);
 
-// image data
+// image data & features
 ImgData calculateImgData(Mat &src);
-Feature calculateFeature(Mat &regions, vector<vector<Point>> &contours, int maxIdx, RotatedRect &bbox, vector<Point> &axes);
+Feature calculateFeatures(Mat &regions, vector<vector<Point>> &contours, int maxIdx, RotatedRect &bbox, vector<Point> &axes);
 
 }  // namespace image
 

@@ -77,6 +77,60 @@ void process::loadImages(vector<Mat> &images, const char *dirname) {
     }
 }
 
+// load training images from a directory; use the image name as the label
+void process::loadTrainingImages(vector<Mat> &images, const char *dirname, vector<std::string> &labels) {
+    char buffer[256];
+    FILE *fp;
+    DIR *dirp;
+    struct dirent *dp;
+
+    printf("Processing directory %s\n\n", dirname);
+
+    // open the directory
+    dirp = opendir(dirname);
+    if (dirp == NULL) {
+        printf("Cannot open directory %s\n", dirname);
+        exit(-1);
+    }
+
+    // loop over all the files in the image file listing
+    while ((dp = readdir(dirp)) != NULL) {
+        // check if the file is an image
+        if (strstr(dp->d_name, ".jpg") ||
+            strstr(dp->d_name, ".jpeg") ||
+            strstr(dp->d_name, ".png") ||
+            strstr(dp->d_name, ".ppm") ||
+            strstr(dp->d_name, ".tif")) {
+            // printf("processing image file: %s\n", dp->d_name);
+
+            // build the overall filename
+            strcpy(buffer, dirname);
+            strcat(buffer, "/");
+            strcat(buffer, dp->d_name);
+
+            // image path
+            // printf("full path name: %s\n", buffer);
+
+            cv::Mat newImage;
+            newImage = cv::imread(buffer);
+
+            // check if new Mat is built
+            if (newImage.data == NULL) {
+                cout << "This new image" << buffer << "cannot be loaded into cv::Mat\n";
+                exit(-1);
+            }
+
+            images.push_back(newImage);
+
+            // https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
+            std::string s = dp->d_name;
+            std::string delimiter = ".";
+            std::string token = s.substr(0, s.find(delimiter));
+            labels.push_back(token);
+        }
+    }
+}
+
 // display results in separate windows
 void process::displayResults(vector<cv::Mat> &results) {
     float targetWidth = 600;

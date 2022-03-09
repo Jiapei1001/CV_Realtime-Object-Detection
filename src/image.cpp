@@ -267,13 +267,13 @@ ImgData image::calculateImgData(Mat &src) {
     res.bbox = cv::minAreaRect(res.contours[maxIdx]);
 
     // calculate features
-    res.features = image::calculateFeature(res.regions, res.contours, maxIdx, res.bbox, res.axisEndPoints);
+    res.features = image::calculateFeatures(res.regions, res.contours, maxIdx, res.bbox, res.axisEndPoints);
 
     return res;
 }
 
 // Calculate features of an image
-Feature image::calculateFeature(Mat &regions, vector<vector<Point>> &contours, int maxIdx, RotatedRect &bbox, vector<Point> &axisEndPoints) {
+Feature image::calculateFeatures(Mat &regions, vector<vector<Point>> &contours, int maxIdx, RotatedRect &bbox, vector<Point> &axisEndPoints) {
     Feature features;
 
     // fill ratio
