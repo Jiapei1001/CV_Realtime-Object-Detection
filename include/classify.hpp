@@ -1,10 +1,13 @@
 #ifndef classify_hpp
 #define classify_hpp
 
+#include <map>
 #include <opencv2/core/mat.hpp>
 #include <vector>
 
 #include "image.hpp"
+
+using namespace std;
 
 namespace classify {
 

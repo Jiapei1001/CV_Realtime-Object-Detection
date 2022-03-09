@@ -81,8 +81,7 @@ int main(int argc, char *argv[]) {
     //     results.push_back(res[i].second);
     // }
 
-    vector<ImgData>
-        res;
+    vector<ImgData> res;
     vector<Mat> results;
     for (int i = 0; i < images.size(); i++) {
         ImgData imgData = image::calculateImgData(images[i]);

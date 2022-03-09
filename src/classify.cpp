@@ -69,21 +69,22 @@ double classify::calculateStdDev(vector<double> &data) {
 }
 
 // Compare with image's feature in db and standard diviated feature, to find the closest feature's label
-string classify::classifyObject(Feature &src, map<string, vector<Feature>> &db, Feature stdDevFeature) {
+string classify::classifyObject(Feature &src, map<string, vector<Feature>> &db, Feature &stdDevFeature) {
     string res = "unknown";
 
     double minDist = 1000;
 
     // https://stackoverflow.com/questions/26281979/c-loop-through-map
-    for (auto const &[key, val] : db) {
+    // map[first, second] -> [label, list of features]
+    for (auto const &img : db) {
         double dist = 0.0;
-        for (Feature cmpFeature : val) {
+        for (Feature cmpFeature : img.second) {
             dist += classify::euclideanDist(src, cmpFeature, stdDevFeature);
         }
-        dist /= (double)val.size();
+        dist /= (double)img.second.size();
 
         if (dist < minDist) {
-            res = key;
+            res = img.first;
             minDist = dist;
         }
     }
