@@ -48,8 +48,6 @@ void process::loadImages(vector<Mat> &images, const char *dirname) {
             strstr(dp->d_name, ".png") ||
             strstr(dp->d_name, ".ppm") ||
             strstr(dp->d_name, ".tif")) {
-            // printf("processing image file: %s\n", dp->d_name);
-
             // build the overall filename
             strcpy(buffer, dirname);
             strcat(buffer, "/");
@@ -67,14 +65,11 @@ void process::loadImages(vector<Mat> &images, const char *dirname) {
                 exit(-1);
             }
 
-            // image's data
-            // cout << "M = " << endl
-            //      << " " << newImage.rowRange(0, 6) << endl
-            //      << endl;
-
             images.push_back(newImage);
         }
     }
+
+    closedir(dirp);
 }
 
 // load training images from a directory; use the image name as the label
@@ -101,15 +96,10 @@ void process::loadTrainingImages(vector<Mat> &images, const char *dirname, vecto
             strstr(dp->d_name, ".png") ||
             strstr(dp->d_name, ".ppm") ||
             strstr(dp->d_name, ".tif")) {
-            // printf("processing image file: %s\n", dp->d_name);
-
             // build the overall filename
             strcpy(buffer, dirname);
             strcat(buffer, "/");
             strcat(buffer, dp->d_name);
-
-            // image path
-            // printf("full path name: %s\n", buffer);
 
             cv::Mat newImage;
             newImage = cv::imread(buffer);
@@ -129,6 +119,8 @@ void process::loadTrainingImages(vector<Mat> &images, const char *dirname, vecto
             labels.push_back(token);
         }
     }
+
+    closedir(dirp);
 }
 
 // display results in separate windows

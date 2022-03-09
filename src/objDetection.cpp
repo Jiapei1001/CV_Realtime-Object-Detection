@@ -9,6 +9,7 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 
+#include "classify.hpp"
 #include "image.hpp"
 #include "process.hpp"
 
@@ -16,6 +17,7 @@ using namespace cv;
 using namespace std;
 using namespace process;
 using namespace image;
+using namespace classify;
 
 /*
   Given a directory on the command line, scans through the directory for image files.
@@ -39,9 +41,26 @@ int main(int argc, char *argv[]) {
     strcpy(trainingDir, "../data/training");
     process::loadTrainingImages(trainingImgs, trainingDir, labels);
 
-    for (int i = 0; i < labels.size(); i++) {
+    // get feature vectors of these training models
+    vector<ImgData> traingImgData;
+    for (int i = 0; i < trainingImgs.size(); i++) {
+        traingImgData.push_back(image::calculateImgData(trainingImgs[i]));
+        traingImgData[i].label = labels[i];
         cout << i << ":  " << labels[i] << "\n";
     }
+    cout << "training images & labels are loaded. \n"
+         << std::endl;
+
+    Feature standardFeature = classify::calculateFeatureStdDev(traingImgData);
+    cout << "fill: " << standardFeature.fillRatio << endl;
+    cout << "bbox: " << standardFeature.bboxDimRatio << endl;
+    cout << "axis: " << standardFeature.axisDimRatio << endl;
+
+    for (int i = 0; i < standardFeature.huMoments.size(); i++) {
+        cout << "hu:   " << standardFeature.huMoments[i] << endl;
+    }
+
+    // get mean feature vector
 
     // vector<pair<Mat, Mat>> res = image::thresholdImages(images);
     // vector<Mat> results;
@@ -55,7 +74,8 @@ int main(int argc, char *argv[]) {
     //     results.push_back(res[i].second);
     // }
 
-    vector<ImgData> res;
+    vector<ImgData>
+        res;
     vector<Mat> results;
     for (int i = 0; i < images.size(); i++) {
         ImgData imgData = image::calculateImgData(images[i]);

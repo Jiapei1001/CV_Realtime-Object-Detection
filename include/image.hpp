@@ -25,7 +25,7 @@ struct ImgData {
     Feature features;
     vector<vector<Point>> contours;
     vector<Point> axisEndPoints;
-    // label
+    string label;
 };
 
 namespace image {

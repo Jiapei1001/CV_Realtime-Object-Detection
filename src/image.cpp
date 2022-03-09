@@ -308,6 +308,9 @@ Feature image::calculateFeatures(Mat &regions, vector<vector<Point>> &contours, 
     Moments moments = cv::moments(contours[maxIdx], true);  // bool binaryImage as true
     vector<double> huMoments;
     cv::HuMoments(moments, huMoments);  // current as 7
+    // the example below shows the last bucket 7 change significantly
+    // https://learnopencv.com/shape-matching-using-hu-moments-c-python/
+    huMoments.resize(6);
     features.huMoments = huMoments;
 
     return features;
