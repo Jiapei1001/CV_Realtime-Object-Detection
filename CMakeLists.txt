@@ -18,6 +18,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 file(GLOB SOURCES "src/*.cpp")
 
-add_executable(objDetection src/objDetection.cpp src/image.cpp src/process.cpp src/classify.cpp)
+add_executable(objDetection src/objDetection.cpp src/image.cpp src/process.cpp src/classify.cpp src/csv_util.cpp)
 
 target_link_libraries(objDetection ${OpenCV_LIBS})

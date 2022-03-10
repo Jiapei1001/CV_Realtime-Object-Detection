@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "classify.hpp"
+#include "csv_util.h"
 #include "image.hpp"
 #include "process.hpp"
 
@@ -34,6 +35,42 @@ int main(int argc, char *argv[]) {
     strcpy(dirname, "../data/testing");
     process::loadImages(images, dirname);
     cout << "number of images: " << images.size() << "\n\n";
+
+    // test on csv
+    /*
+    char csvDirName[256];
+    strcpy(csvDirName, "../data/csv/trainingImages.csv");
+    for (int i = 0; i < images.size(); i++) {
+        char fname[64];
+        snprintf(fname, sizeof fname, "%d_%d", images[i].rows, images[i].cols);
+        // https://stackoverflow.com/questions/20980723/convert-mat-to-vector-float-and-vectorfloat-to-mat-in-opencv
+
+        vector<float> V;
+        V.assign((float *)images[i].datastart, (float *)images[i].dataend);
+        append_image_data_csv(csvDirName, fname, V, 1);
+    }
+
+    vector<char *> filenames;
+    vector<vector<float>> data;
+    read_image_data_csv(csvDirName, filenames, data, 0);
+    vector<cv::Mat> loadedImages;
+    for (int i = 0; i < data.size(); i++) {
+        // cv::Mat temp = cv::Mat(data[i]).clone();
+        // memcpy(temp.data, i.data(), i.size() * sizeof(float));
+        // temp = cv::imread(i);
+        // cv::Mat dest = temp.reshape(3, stoi(rows));
+
+        string fn(filenames[i]);
+        string delimiter = "_";
+        string rows = fn.substr(0, fn.find(delimiter));
+        string cols = fn.substr(fn.find(delimiter) + 1);
+
+        cv::Mat temp = Mat(stoi(rows), stoi(cols), CV_8UC3);
+        memcpy(temp.data, data[i].data(), data[i].size() * sizeof(float));
+
+        cv::imshow("temp", temp);
+    }
+    */
 
     vector<cv::Mat> trainingImgs;
     vector<std::string> labels;
@@ -82,32 +119,12 @@ int main(int argc, char *argv[]) {
     // }
 
     vector<ImgData> res;
-    vector<Mat> results;
     for (int i = 0; i < images.size(); i++) {
         ImgData imgData = image::calculateImgData(images[i]);
-        Mat img = imgData.regions;
-
-        // draw countours
-        Scalar color1 = Scalar(150, 50, 255);
-        cv::drawContours(img, imgData.contours, 0, color1, 4);
-
-        // draw bounding box
-        Scalar color2 = Scalar(200, 255, 100);
-        Point2f rect_points[4];
-        imgData.bbox.points(rect_points);
-        for (int j = 0; j < 4; j++) {
-            cv::line(img, rect_points[j], rect_points[(j + 1) % 4], color2, 4);
-        }
-
-        // draw axes
-        Scalar color3 = Scalar(255, 200, 100);
-        line(img, imgData.axisEndPoints[0], imgData.axisEndPoints[2], color3, 2);
-        line(img, imgData.axisEndPoints[1], imgData.axisEndPoints[3], color3, 2);
-
-        results.push_back(img);
+        imgData.label = classify::classifyObject(imgData.features, db, standardFeature);
+        string displayName = "image-" + to_string(i);
+        process::displayResultsWithFeatures(displayName, imgData);
     }
-
-    process::displayResults(results);
 
     // NOTE: must add waitKey, or the program will terminate, without showing the result images
     waitKey(0);

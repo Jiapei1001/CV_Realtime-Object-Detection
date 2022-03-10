@@ -89,6 +89,8 @@ string classify::classifyObject(Feature &src, map<string, vector<Feature>> &db, 
         }
     }
 
+    cout << "dist:\t\t  " << minDist << endl;
+
     return res;
 }
 

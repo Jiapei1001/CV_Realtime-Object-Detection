@@ -7,8 +7,11 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 
+#include "image.hpp"
+
 using namespace cv;
 using namespace std;
+using namespace image;
 
 // print descriptions
 void process::printModeDescriptions() {
@@ -114,7 +117,7 @@ void process::loadTrainingImages(vector<Mat> &images, const char *dirname, vecto
 
             // https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
             std::string s = dp->d_name;
-            std::string delimiter = ".";
+            std::string delimiter = "_";
             std::string token = s.substr(0, s.find(delimiter));
             labels.push_back(token);
         }
@@ -178,4 +181,46 @@ void process::displayResultsInOneWindow(vector<cv::Mat> &results) {
     string window_name = "top matched results";
     namedWindow(window_name, WINDOW_AUTOSIZE);
     imshow(window_name, dstMat);
+}
+
+// Display the features on top of the original image
+void process::displayResultsWithFeatures(string displayName, ImgData &imgData) {
+    Mat temp = imgData.thresholded;
+    // make 1D channel to 3D
+    // https://stackoverflow.com/questions/9970660/convert-1-channel-image-to-3-channel
+    cv::Mat thresholded;
+    cv::Mat in[] = {temp, temp, temp};
+    cv::merge(in, 3, thresholded);
+
+    // draw countours
+    cv::drawContours(thresholded, imgData.contours, 0, Scalar(120, 80, 255), 3);
+
+    // draw bounding box
+    Point2f corners[4];
+    imgData.bbox.points(corners);
+    for (int j = 0; j < 4; j++) {
+        cv::line(thresholded, corners[j], corners[(j + 1) % 4], Scalar(220, 230, 80), 3);
+    }
+
+    // draw axes
+    line(thresholded, imgData.axisEndPoints[0], imgData.axisEndPoints[2], Scalar(255, 200, 100), 2);
+    line(thresholded, imgData.axisEndPoints[1], imgData.axisEndPoints[3], Scalar(255, 200, 100), 2);
+
+    // draw label
+    // thickness as 3, linetype as 16 - antiaxis
+    cv::putText(thresholded, imgData.label, Point(10, 50), FONT_HERSHEY_COMPLEX, 2, Scalar(150, 150, 150), 3, 16);
+
+    float sw = 1024;
+    float scale, sh;
+    scale = sw / imgData.original.cols;
+    sh = scale * imgData.original.rows;
+    cv::resize(imgData.original, imgData.original, Size(sw, sh));
+    cv::resize(thresholded, thresholded, Size(sw, sh));
+
+    Mat result(Size(sw * 2, sh), CV_8UC3, Scalar(100, 100, 100));
+    imgData.original.copyTo(result(Rect(0, 0, sw, sh)));
+    thresholded.copyTo(result(Rect(sw, 0, sw, sh)));
+
+    cv::namedWindow(displayName, WINDOW_AUTOSIZE);
+    cv::imshow(displayName, result);
 }
