@@ -84,51 +84,7 @@ int image::blur5x5(cv::Mat &src, cv::Mat &dst) {
 }
 
 // Generate the thresholded version for an image
-Mat thresholdImageCustom(Mat &image) {
-    Mat src(image.rows, image.cols, CV_8UC3);
-    // image::blur5x5(image, src);
-    src = image.clone();
-
-    Mat dst(src.rows, src.cols, CV_8UC1);
-    Mat gray(src.rows, src.cols, CV_8UC1);
-
-    cvtColor(src, gray, COLOR_BGR2GRAY);
-    cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
-    float thresMean = (float)mean(gray).val[0];
-
-    bool finish = false;
-    while (!finish) {
-        int frontSum = 0, backSum = 0, frontCnt = 0, backCnt = 0;
-        for (int i = 0; i < gray.rows; i++) {
-            for (int j = 0; j < gray.cols; j++) {
-                // background
-                if (gray.at<unsigned char>(i, j) > thresMean) {
-                    dst.at<unsigned char>(i, j) = 0;
-                    backSum += gray.at<unsigned char>(i, j);
-                    backCnt++;
-                } else {
-                    dst.at<unsigned char>(i, j) = 255;
-                    frontSum += gray.at<unsigned char>(i, j);
-                    frontCnt++;
-                }
-            }
-        }
-        float frontMean = (float)frontSum / (float)frontCnt;
-        float backMean = (float)backSum / (float)backCnt;
-        float newThresMean = (frontMean + backMean) / 2.0f;
-
-        if (fabs(newThresMean - thresMean) < 1) {
-            finish = true;
-        } else {
-            thresMean = newThresMean;
-        }
-    }
-
-    return dst;
-}
-
-// Generate the thresholded version for an image
-Mat thresholdImageCustom2(Mat &src) {
+Mat thresholdImageCustom(Mat &src) {
     Mat gray(src.rows, src.cols, CV_8UC1);
     cvtColor(src, gray, COLOR_BGR2GRAY);
     cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
@@ -150,6 +106,56 @@ Mat thresholdImageCustom2(Mat &src) {
     return dst;
 }
 
+// BACK UP Customized threshold method
+// Generate the thresholded version for an image
+/*
+Mat thresholdImageCustom3(Mat &image) {
+    Mat src(image.rows, image.cols, CV_8UC3);
+    // image::blur5x5(image, src);
+    src = image.clone();
+
+    Mat dst(src.rows, src.cols, CV_8UC1);
+    Mat gray(src.rows, src.cols, CV_8UC1);
+
+    cvtColor(src, gray, COLOR_BGR2GRAY);
+    cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
+    float thresMean = (float)mean(gray).val[0];
+
+    // find the updated mean value until the difference between new and former thresMean values is < 1
+    bool finish = false;
+    while (!finish) {
+        int frontSum = 0, backSum = 0, frontCnt = 0, backCnt = 0;
+        for (int i = 0; i < gray.rows; i++) {
+            for (int j = 0; j < gray.cols; j++) {
+                // background
+                if (gray.at<unsigned char>(i, j) > thresMean) {
+                    dst.at<unsigned char>(i, j) = 0;
+                    backSum += gray.at<unsigned char>(i, j);
+                    backCnt++;
+                }
+                // front
+                else {
+                    dst.at<unsigned char>(i, j) = 255;
+                    frontSum += gray.at<unsigned char>(i, j);
+                    frontCnt++;
+                }
+            }
+        }
+        float frontMean = (float)frontSum / (float)frontCnt;
+        float backMean = (float)backSum / (float)backCnt;
+        float newThresMean = (frontMean + backMean) / 2.0f;
+
+        if (fabs(newThresMean - thresMean) < 1) {
+            finish = true;
+        } else {
+            thresMean = newThresMean;
+        }
+    }
+
+    return dst;
+}
+*/
+
 // Utilize OpenCV to get thresholded image
 Mat thresholdImage2(Mat image) {
     cv::Mat hsv, saturation, intensity, dst;
@@ -170,6 +176,8 @@ Mat thresholdImage2(Mat image) {
 }
 
 // Generate the thresholded version of an image
+// Here, I first tried customized threshold method. They can render the thresholded image for dark color objects.
+// I find using the opencv method works better when detecting objects with light colors.
 Mat image::thresholdImage(Mat &image) {
     // implemented customized threshold method
     // Mat thresholdedImg = thresholdImageCustom(image);
@@ -183,9 +191,10 @@ Mat image::thresholdImage(Mat &image) {
     // threshold binary invert
     // https://docs.opencv.org/3.4/db/d8e/tutorial_threshold.html
     cv::threshold(gray, thresholdedImg, 100, 255, THRESH_BINARY_INV);
-    Mat cleanUpImg = cleanUpBinary(thresholdedImg);
+    // Mat cleanUpImg = cleanUpBinary(thresholdedImg);
 
-    return cleanUpImg;
+    // return cleanUpImg;
+    return thresholdedImg;
 }
 
 // Generate the thresholded version for a list of images
@@ -212,7 +221,7 @@ cv::Mat image::cleanUpBinary(cv::Mat &src) {
     return dst;
 }
 
-// Run connected compoenents analysis for an image
+// Run connected compoenents analysis for an image, using OpenCV method
 pair<Mat, int> image::connectedComponents(Mat &image) {
     // run connected compoenents analysis
     Mat src = image::thresholdImage(image);

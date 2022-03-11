@@ -9,6 +9,7 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 
+#include "cascade.hpp"
 #include "classify.hpp"
 #include "csv_util.h"
 #include "image.hpp"
@@ -19,6 +20,7 @@ using namespace std;
 using namespace process;
 using namespace image;
 using namespace classify;
+using namespace cascade;
 
 /*
   Given a directory on the command line, scans through the directory for image files.
@@ -52,14 +54,21 @@ int main(int argc, char *argv[]) {
     }
 
     // Calculation method - Euclidean distance or K-Nearest Neighbor
-    cout << "Enter 'e' for Euclidean distance method, or 'k' for K-Nearest Neighbor method\n";
+    cout << "Enter 'e' for Euclidean distance method, or 'k' for K-Nearest Neighbor method, or 'c' for Haar Cascade\n";
     bool finish = false;
     string method;
     while (!finish) {
         cin >> method;
-        if (method == "e" || method == "k") {
+        if (method == "e" || method == "k" || method == "c") {
             finish = true;
         }
+    }
+
+    if (method == "c") {
+        // Reference: Haar-cascade Detection
+        // https://docs.opencv.org/3.4/db/d28/tutorial_cascade_classifier.html
+        cascade::cascadeVideoStream();
+        return 0;
     }
 
     // Video or Image
@@ -95,7 +104,7 @@ int main(int argc, char *argv[]) {
                       (int)capdev->get(cv::CAP_PROP_FRAME_HEIGHT));
         printf("Expected size: %d %d\n", refS.width, refS.height);
 
-        cv::namedWindow("Video", 1);  // identifies a window
+        cv::namedWindow("Video", 2);  // identifies a window, must be different from the above one for haar cascade method
 
         cv::Mat frame;
         for (;;) {
@@ -133,23 +142,21 @@ int main(int argc, char *argv[]) {
         cout << "number of images: " << images.size() << "\n\n";
 
         // threshold
-        /*
-        vector<pair<Mat, Mat>> res = image::thresholdImages(images);
-        vector<Mat> results;
-        for (int i = 0; i < res.size(); i++) {
-            results.push_back(image::cleanUpBinary(res[i].second));
-        }
-        process::displayResults(results);
-        */
+        // vector<pair<Mat, Mat>> res = image::thresholdImages(images);
+        // vector<Mat> results;
+        // for (int i = 0; i < res.size(); i++) {
+        //     // results.push_back(image::cleanUpBinary(res[i].second));
+        //     results.push_back(res[i].second);
+        // }
+        // process::displayResults(results);
 
         // connected components
-        /*
-        vector<pair<Mat, Mat>> res = image::connectedComponents(images);
-        vector<Mat> results;
-        for (int i = 0; i < res.size(); i++) {
-            results.push_back(res[i].second);
-        }
-        */
+        // vector<Mat> results;
+        // for (int i = 0; i < images.size(); i++) {
+        //     pair<Mat, int> temp = image::connectedComponents(images[i]);
+        //     results.push_back(temp.first);
+        // }
+        // process::displayResults(results);
 
         vector<ImgData> res;
         vector<string> detectedLabels;
