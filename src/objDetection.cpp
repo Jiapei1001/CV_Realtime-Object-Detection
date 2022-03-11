@@ -25,53 +25,7 @@ using namespace classify;
   Return the top matched results.
  */
 int main(int argc, char *argv[]) {
-    // Mat img = imread("../data/img1P3.png", IMREAD_COLOR);
-    // namedWindow("image", WINDOW_AUTOSIZE);
-    // cv::imshow("image", img);
-
-    vector<cv::Mat> images;
-    char dirname[256];
-
-    strcpy(dirname, "../data/testing");
-    process::loadImages(images, dirname);
-    cout << "number of images: " << images.size() << "\n\n";
-
-    // test on csv
-    /*
-    char csvDirName[256];
-    strcpy(csvDirName, "../data/csv/trainingImages.csv");
-    for (int i = 0; i < images.size(); i++) {
-        char fname[64];
-        snprintf(fname, sizeof fname, "%d_%d", images[i].rows, images[i].cols);
-        // https://stackoverflow.com/questions/20980723/convert-mat-to-vector-float-and-vectorfloat-to-mat-in-opencv
-
-        vector<float> V;
-        V.assign((float *)images[i].datastart, (float *)images[i].dataend);
-        append_image_data_csv(csvDirName, fname, V, 1);
-    }
-
-    vector<char *> filenames;
-    vector<vector<float>> data;
-    read_image_data_csv(csvDirName, filenames, data, 0);
-    vector<cv::Mat> loadedImages;
-    for (int i = 0; i < data.size(); i++) {
-        // cv::Mat temp = cv::Mat(data[i]).clone();
-        // memcpy(temp.data, i.data(), i.size() * sizeof(float));
-        // temp = cv::imread(i);
-        // cv::Mat dest = temp.reshape(3, stoi(rows));
-
-        string fn(filenames[i]);
-        string delimiter = "_";
-        string rows = fn.substr(0, fn.find(delimiter));
-        string cols = fn.substr(fn.find(delimiter) + 1);
-
-        cv::Mat temp = Mat(stoi(rows), stoi(cols), CV_8UC3);
-        memcpy(temp.data, data[i].data(), data[i].size() * sizeof(float));
-
-        cv::imshow("temp", temp);
-    }
-    */
-
+    // Training Images
     vector<cv::Mat> trainingImgs;
     vector<std::string> labels;
     char trainingDir[256];
@@ -83,52 +37,181 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < trainingImgs.size(); i++) {
         traingImgData.push_back(image::calculateImgData(trainingImgs[i]));
         traingImgData[i].label = labels[i];
-        cout << i << ":  " << labels[i] << "\n";
+        // cout << i << ":  " << labels[i] << "\n";
     }
-    cout << "training images & labels are loaded. \n"
-         << std::endl;
+    cout << "Training images & their labels are loaded.\n"
+         << endl;
 
     // get mean feature vector
     Feature standardFeature = classify::calculateFeatureStdDev(traingImgData);
-    cout << "fill: " << standardFeature.fillRatio << endl;
-    cout << "bbox: " << standardFeature.bboxDimRatio << endl;
-    cout << "axis: " << standardFeature.axisDimRatio << endl;
-
-    for (int i = 0; i < standardFeature.huMoments.size(); i++) {
-        cout << "hu:   " << standardFeature.huMoments[i] << endl;
-    }
 
     // get training images' map of labels
     map<string, vector<Feature>> db;
     for (ImgData i : traingImgData) {
         db[i.label].push_back(i.features);
     }
-    // classify
-    // classify::classifyObject(src, db, standardFeature);
 
-    // vector<pair<Mat, Mat>> res = image::thresholdImages(images);
-    // vector<Mat> results;
-    // for (int i = 0; i < res.size(); i++) {
-    //     results.push_back(image::cleanUpBinary(res[i].second));
-    // }
-
-    // vector<pair<Mat, Mat>> res = image::connectedComponents(images);
-    // vector<Mat> results;
-    // for (int i = 0; i < res.size(); i++) {
-    //     results.push_back(res[i].second);
-    // }
-
-    vector<ImgData> res;
-    for (int i = 0; i < images.size(); i++) {
-        ImgData imgData = image::calculateImgData(images[i]);
-        imgData.label = classify::classifyObject(imgData.features, db, standardFeature);
-        string displayName = "image-" + to_string(i);
-        process::displayResultsWithFeatures(displayName, imgData);
+    // Calculation method - Euclidean distance or K-Nearest Neighbor
+    cout << "Enter 'e' for Euclidean distance method, or 'k' for K-Nearest Neighbor method\n";
+    bool finish = false;
+    string method;
+    while (!finish) {
+        cin >> method;
+        if (method == "e" || method == "k") {
+            finish = true;
+        }
     }
 
-    // NOTE: must add waitKey, or the program will terminate, without showing the result images
-    waitKey(0);
+    // Video or Image
+    cout << "Enter 'v' for video processing, or 'p' for photo processing\n";
+    string mode;
+    finish = false;
+    bool isVideo = false;
+    while (!finish) {
+        cin >> mode;
+        if (mode == "p") {
+            isVideo = false;
+            finish = true;
+        } else if (mode == "v") {
+            isVideo = true;
+            finish = true;
+        }
+    }
+
+    if (isVideo) {
+        cout << "\nStart video mode\n";
+        // process::classifyObjectByVideo(db, standardFeature);
+        cv::VideoCapture *capdev;
+
+        // open the video device
+        capdev = new cv::VideoCapture(0);
+        if (!capdev->isOpened()) {
+            printf("Unable to open video device\n");
+            return (-1);
+        }
+
+        // get some properties of the image
+        cv::Size refS((int)capdev->get(cv::CAP_PROP_FRAME_WIDTH),
+                      (int)capdev->get(cv::CAP_PROP_FRAME_HEIGHT));
+        printf("Expected size: %d %d\n", refS.width, refS.height);
+
+        cv::namedWindow("Video", 1);  // identifies a window
+
+        cv::Mat frame;
+        for (;;) {
+            *capdev >> frame;  // get a new frame from the camera, treat as a stream
+            if (frame.empty()) {
+                printf("frame is empty\n");
+                break;
+            }
+
+            ImgData imgData = image::calculateImgData(frame);
+            if (method == "e") {
+                imgData.label = classify::classifyObject(imgData.features, db, standardFeature);
+            } else if (method == "k") {
+                imgData.label = classify::classifyObjectByKNN(imgData.features, db, standardFeature);
+            }
+
+            process::displayResultsWithFeaturesInVideoFrame(frame, imgData);
+
+            cv::imshow("Video", frame);
+            if (cv::waitKey(10) == 'q') {
+                break;
+            }
+        }
+
+        delete capdev;
+    } else {
+        cout << "\nStart image mode\n";
+
+        vector<cv::Mat> images;
+        vector<string> actualLabels;
+        char dirname[256];
+
+        strcpy(dirname, "../data/testing");
+        process::loadImages(images, dirname, actualLabels);
+        cout << "number of images: " << images.size() << "\n\n";
+
+        // threshold
+        /*
+        vector<pair<Mat, Mat>> res = image::thresholdImages(images);
+        vector<Mat> results;
+        for (int i = 0; i < res.size(); i++) {
+            results.push_back(image::cleanUpBinary(res[i].second));
+        }
+        process::displayResults(results);
+        */
+
+        // connected components
+        /*
+        vector<pair<Mat, Mat>> res = image::connectedComponents(images);
+        vector<Mat> results;
+        for (int i = 0; i < res.size(); i++) {
+            results.push_back(res[i].second);
+        }
+        */
+
+        vector<ImgData> res;
+        vector<string> detectedLabels;
+        for (int i = 0; i < images.size(); i++) {
+            ImgData imgData = image::calculateImgData(images[i]);
+
+            if (method == "e") {
+                imgData.label = classify::classifyObject(imgData.features, db, standardFeature);
+            } else if (method == "k") {
+                imgData.label = classify::classifyObjectByKNN(imgData.features, db, standardFeature);
+            }
+
+            detectedLabels.push_back(imgData.label);
+
+            string displayName = "image-" + to_string(i);
+            process::displayResultsWithFeaturesAsImage(displayName, imgData);
+        }
+
+        process::buildMatrixTable(actualLabels, detectedLabels);
+
+        // NOTE: must add waitKey, or the program will terminate, without showing the result images
+        waitKey(0);
+    }
+
     printf("Terminating\n");
 
     return (0);
 }
+
+// BACK UP
+// test on csv
+/*
+char csvDirName[256];
+strcpy(csvDirName, "../data/csv/trainingImages.csv");
+for (int i = 0; i < images.size(); i++) {
+    char fname[64];
+    snprintf(fname, sizeof fname, "%d_%d", images[i].rows, images[i].cols);
+    // https://stackoverflow.com/questions/20980723/convert-mat-to-vector-float-and-vectorfloat-to-mat-in-opencv
+
+    vector<float> V;
+    V.assign((float *)images[i].datastart, (float *)images[i].dataend);
+    append_image_data_csv(csvDirName, fname, V, 1);
+}
+
+vector<char *> filenames;
+vector<vector<float>> data;
+read_image_data_csv(csvDirName, filenames, data, 0);
+vector<cv::Mat> loadedImages;
+for (int i = 0; i < data.size(); i++) {
+    // cv::Mat temp = cv::Mat(data[i]).clone();
+    // memcpy(temp.data, i.data(), i.size() * sizeof(float));
+    // temp = cv::imread(i);
+    // cv::Mat dest = temp.reshape(3, stoi(rows));
+
+    string fn(filenames[i]);
+    string delimiter = "_";
+    string rows = fn.substr(0, fn.find(delimiter));
+    string cols = fn.substr(fn.find(delimiter) + 1);
+
+    cv::Mat temp = Mat(stoi(rows), stoi(cols), CV_8UC3);
+    memcpy(temp.data, data[i].data(), data[i].size() * sizeof(float));
+
+    cv::imshow(to_string(i), temp);
+}
+*/

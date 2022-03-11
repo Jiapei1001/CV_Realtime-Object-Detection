@@ -128,19 +128,18 @@ Mat thresholdImageCustom(Mat &image) {
 }
 
 // Generate the thresholded version for an image
-Mat thresholdImageCustom2(Mat &image) {
-    Mat src(image.rows, image.cols, CV_8UC3);
-    // image::blur5x5(image, src);
-    src = image.clone();
+Mat thresholdImageCustom2(Mat &src) {
+    Mat gray(src.rows, src.cols, CV_8UC1);
+    cvtColor(src, gray, COLOR_BGR2GRAY);
+    cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
 
     Mat dst(src.rows, src.cols, CV_8UC1);
 
-    int threshold = 200;
+    int threshold = 180;
     for (int i = 0; i < src.rows; i++) {
         for (int j = 0; j < src.cols; j++) {
             // background
-            cv::Vec3b p = src.at<cv::Vec3b>(i, j);
-            if (p[0] > threshold) {
+            if (gray.at<unsigned char>(i, j) < threshold) {
                 dst.at<unsigned char>(i, j) = 255;
             } else {
                 dst.at<unsigned char>(i, j) = 0;
@@ -172,8 +171,20 @@ Mat thresholdImage2(Mat image) {
 
 // Generate the thresholded version of an image
 Mat image::thresholdImage(Mat &image) {
-    Mat thresholdedImg = thresholdImageCustom(image);
+    // implemented customized threshold method
+    // Mat thresholdedImg = thresholdImageCustom(image);
+    // Mat thresholdedImg = thresholdImageCustom2(image);
+
+    // after multiple test, opencv method delivers better result
+    Mat gray(image.rows, image.cols, CV_8UC1);
+    cvtColor(image, gray, COLOR_BGR2GRAY);
+    cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
+    Mat thresholdedImg(image.rows, image.cols, CV_8UC1);
+    // threshold binary invert
+    // https://docs.opencv.org/3.4/db/d8e/tutorial_threshold.html
+    cv::threshold(gray, thresholdedImg, 100, 255, THRESH_BINARY_INV);
     Mat cleanUpImg = cleanUpBinary(thresholdedImg);
+
     return cleanUpImg;
 }
 
@@ -196,8 +207,8 @@ cv::Mat image::cleanUpBinary(cv::Mat &src) {
 
     Mat closingElement = getStructuringElement(MORPH_RECT, Size(4, 4), Point(0, 0));
 
-    // 2 iterations
-    cv::morphologyEx(src, dst, MORPH_CLOSE, closingElement, Point(-1, -1), 2);
+    // 5 iterations
+    cv::morphologyEx(src, dst, MORPH_CLOSE, closingElement, Point(-1, -1), 5);
     return dst;
 }
 
@@ -307,7 +318,7 @@ Feature image::calculateFeatures(Mat &regions, vector<vector<Point>> &contours, 
     // https://docs.opencv.org/3.4/d0/d49/tutorial_moments.html
     Moments moments = cv::moments(contours[maxIdx], true);  // bool binaryImage as true
     vector<double> huMoments;
-    cv::HuMoments(moments, huMoments);  // current as 7
+    cv::HuMoments(moments, huMoments);  // current as 7, resize to 6
     // the example below shows the last bucket 7 change significantly
     // https://learnopencv.com/shape-matching-using-hu-moments-c-python/
     huMoments.resize(6);

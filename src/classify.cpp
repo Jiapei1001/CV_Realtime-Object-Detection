@@ -89,7 +89,7 @@ string classify::classifyObject(Feature &src, map<string, vector<Feature>> &db, 
         }
     }
 
-    cout << "dist:\t\t  " << minDist << endl;
+    // cout << "dist:\t\t  " << minDist << endl;
 
     return res;
 }
@@ -112,4 +112,62 @@ double classify::euclideanDist(Feature &src, Feature &cmp, Feature &stdDevFeatur
     dist += fabs(sqrt(sumSrc) - sqrt(sumCmp)) / (sqrt(sumStdDev));
 
     return dist;
+}
+
+// Customized comparator that helps to sort two pairs by the second value - distance, smaller distance comes first
+bool sortByDistance(pair<string, double> p1, pair<string, double> p2) {
+    return p1.second < p2.second;
+}
+
+// Classify object by K nearest neighbors
+// https://www.youtube.com/watch?v=HVXime0nQeI
+string classify::classifyObjectByKNN(Feature &src, map<string, vector<Feature>> &db, Feature &stdDevFeature) {
+    string res = "unknown";
+
+    double minDist = 1000;
+
+    // 1. get euclidean distance from source to features in db
+    // 2. sort the distance
+    // 3. find the label with most count in the K neighbors
+    // 4. classify the object by the label if it is < minimal distance requirement
+
+    vector<pair<string, double>> distPairs;
+    for (auto const &img : db) {
+        for (Feature cmpFeature : img.second) {
+            double dist = classify::euclideanDist(src, cmpFeature, stdDevFeature);
+            distPairs.push_back(make_pair(img.first, dist));
+        }
+    }
+
+    sort(distPairs.begin(), distPairs.end(), sortByDistance);
+
+    // 8 nearest neighbors
+    int k = 8;
+    k = distPairs.size() < 8 ? distPairs.size() : k;
+    map<string, int> labelCnt;
+    double sumKDist = 0.0;
+
+    int maxCnt = 0;
+    string maxLabel;
+    for (int i = 0; i < k; i++) {
+        string label = distPairs[i].first;
+        sumKDist += distPairs[i].second;
+
+        if (labelCnt.find(label) == labelCnt.end()) {
+            labelCnt[label] = 1;
+        } else {
+            labelCnt[label] += 1;
+        }
+
+        if (labelCnt[label] > maxCnt) {
+            maxCnt = labelCnt[label];
+            maxLabel = label;
+        }
+    }
+
+    if ((sumKDist / k) < minDist) {
+        res = maxLabel;
+    }
+
+    return res;
 }

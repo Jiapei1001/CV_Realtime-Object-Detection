@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 
+#include "classify.hpp"
 #include "image.hpp"
 
 using namespace cv;
@@ -28,7 +29,7 @@ void process::printModeDescriptions() {
 }
 
 // load images from a directory
-void process::loadImages(vector<Mat> &images, const char *dirname) {
+void process::loadImages(vector<Mat> &images, const char *dirname, vector<string> &actualLabels) {
     char buffer[256];
     FILE *fp;
     DIR *dirp;
@@ -69,6 +70,11 @@ void process::loadImages(vector<Mat> &images, const char *dirname) {
             }
 
             images.push_back(newImage);
+
+            std::string s = dp->d_name;
+            std::string delimiter = "_";
+            std::string token = s.substr(0, s.find(delimiter));
+            actualLabels.push_back(token);
         }
     }
 
@@ -82,7 +88,7 @@ void process::loadTrainingImages(vector<Mat> &images, const char *dirname, vecto
     DIR *dirp;
     struct dirent *dp;
 
-    printf("Processing directory %s\n\n", dirname);
+    printf("Processing training images in the directory %s\n\n", dirname);
 
     // open the directory
     dirp = opendir(dirname);
@@ -183,8 +189,8 @@ void process::displayResultsInOneWindow(vector<cv::Mat> &results) {
     imshow(window_name, dstMat);
 }
 
-// Display the features on top of the original image
-void process::displayResultsWithFeatures(string displayName, ImgData &imgData) {
+// Display the features besides the original image
+void process::displayResultsWithFeaturesAsImage(string displayName, ImgData &imgData) {
     Mat temp = imgData.thresholded;
     // make 1D channel to 3D
     // https://stackoverflow.com/questions/9970660/convert-1-channel-image-to-3-channel
@@ -193,22 +199,26 @@ void process::displayResultsWithFeatures(string displayName, ImgData &imgData) {
     cv::merge(in, 3, thresholded);
 
     // draw countours
-    cv::drawContours(thresholded, imgData.contours, 0, Scalar(120, 80, 255), 3);
+    cv::drawContours(thresholded, imgData.contours, 0, Scalar(120, 80, 255), 6);
 
     // draw bounding box
     Point2f corners[4];
     imgData.bbox.points(corners);
     for (int j = 0; j < 4; j++) {
-        cv::line(thresholded, corners[j], corners[(j + 1) % 4], Scalar(220, 230, 80), 3);
+        // cv::line(thresholded, corners[j], corners[(j + 1) % 4], Scalar(220, 230, 80), 4);
+        cv::line(thresholded, corners[j], corners[(j + 1) % 4], Scalar(255, 0, 0), 2);
     }
 
     // draw axes
-    line(thresholded, imgData.axisEndPoints[0], imgData.axisEndPoints[2], Scalar(255, 200, 100), 2);
-    line(thresholded, imgData.axisEndPoints[1], imgData.axisEndPoints[3], Scalar(255, 200, 100), 2);
+    line(thresholded, imgData.axisEndPoints[0], imgData.axisEndPoints[2], Scalar(0, 220, 200), 3);
+    line(thresholded, imgData.axisEndPoints[1], imgData.axisEndPoints[3], Scalar(0, 220, 200), 3);
 
     // draw label
-    // thickness as 3, linetype as 16 - antiaxis
-    cv::putText(thresholded, imgData.label, Point(10, 50), FONT_HERSHEY_COMPLEX, 2, Scalar(150, 150, 150), 3, 16);
+    // thickness as 4, linetype as 16 - antiaxis
+    Rect rec = imgData.bbox.boundingRect();
+    // put text aside boundingbox
+    // https://stackoverflow.com/questions/56108183/python-opencv-cv2-drawing-rectangle-with-text
+    cv::putText(thresholded, imgData.label, Point(rec.x, rec.y - 10), FONT_HERSHEY_COMPLEX, 2, Scalar(150, 150, 150), 4, 16);
 
     float sw = 1024;
     float scale, sh;
@@ -223,4 +233,147 @@ void process::displayResultsWithFeatures(string displayName, ImgData &imgData) {
 
     cv::namedWindow(displayName, WINDOW_AUTOSIZE);
     cv::imshow(displayName, result);
+}
+
+// Build a confusion matrix table and save it as a .csv file
+void process::buildMatrixTable(vector<string> &actualLabels, vector<string> &detectedLabels) {
+    ofstream file;
+    file.open("../data/csv/matrix.csv");
+
+    vector<string> labelSet(actualLabels);
+    // get unique labels
+    // https://stackoverflow.com/questions/26824260/c-unique-values-in-a-vector
+    sort(labelSet.begin(), labelSet.end());
+    vector<string>::iterator it;
+    it = unique(labelSet.begin(), labelSet.end());
+    labelSet.resize(distance(labelSet.begin(), it));
+    // number of unique actual labels from the testing images
+    int n = labelSet.size();
+    cout << "label number: " << n << "\n";
+
+    // header of the matrix
+    file << "Confusion Matrix";
+    // map to each label's column index
+    map<string, int> map2Idx;
+    for (int i = 0; i < n; i++) {
+        file << "," << labelSet[i];
+        map2Idx[labelSet[i]] = i;
+    }
+    file << "\n";
+
+    // initiate matrix
+    // https://stackoverflow.com/questions/15520880/initializing-entire-2d-array-with-one-value
+    int matrix[n][n];
+    memset(matrix, 0, n * n * sizeof(int));
+
+    for (int i = 0; i < n; i++) {
+        matrix[0][i] = 0;
+    }
+    // rows are detected labels, cols are actual labels
+    for (int i = 0; i < actualLabels.size(); i++) {
+        int c = map2Idx[actualLabels[i]];
+        int r = map2Idx[detectedLabels[i]];
+        matrix[r][c] += 1;
+    }
+
+    // save csv file
+    for (int i = 0; i < n; i++) {
+        // each label's name
+        file << labelSet[i];
+        for (int j = 0; j < n; j++) {
+            file << "," << to_string(matrix[i][j]);
+        }
+        file << "\n";
+    }
+
+    file.close();
+}
+
+// Process object detection by video mode
+// Reference Assignment #1
+// int process::classifyObjectByVideo(map<string, vector<Feature>> &db, Feature &standardFeature) {
+//     cv::VideoCapture *capdev;
+
+//     // open the video device
+//     capdev = new cv::VideoCapture(0);
+//     if (!capdev->isOpened()) {
+//         printf("Unable to open video device\n");
+//         return (-1);
+//     }
+
+//     // get some properties of the image
+//     cv::Size refS((int)capdev->get(cv::CAP_PROP_FRAME_WIDTH),
+//                   (int)capdev->get(cv::CAP_PROP_FRAME_HEIGHT));
+//     printf("Expected size: %d %d\n", refS.width, refS.height);
+
+//     cv::namedWindow("Video", 1);  // identifies a window
+
+//     cv::Mat frame;
+//     for (;;) {
+//         *capdev >> frame;  // get a new frame from the camera, treat as a stream
+//         if (frame.empty()) {
+//             printf("frame is empty\n");
+//             break;
+//         }
+
+//         ImgData imgData = image::calculateImgData(frame);
+//         imgData.label = classify::classifyObjectByKNN(frame.features, db, standardFeature);
+
+//         // draw countours
+//         cv::drawContours(frame, imgData.contours, 0, Scalar(120, 80, 255), 6);
+
+//         // draw bounding box
+//         Point2f corners[4];
+//         imgData.bbox.points(corners);
+//         for (int j = 0; j < 4; j++) {
+//             // cv::line(thresholded, corners[j], corners[(j + 1) % 4], Scalar(220, 230, 80), 4);
+//             cv::line(frame, corners[j], corners[(j + 1) % 4], Scalar(255, 0, 0), 2);
+//         }
+
+//         // draw axes
+//         line(frame, imgData.axisEndPoints[0], imgData.axisEndPoints[2], Scalar(0, 220, 200), 3);
+//         line(frame, imgData.axisEndPoints[1], imgData.axisEndPoints[3], Scalar(0, 220, 200), 3);
+
+//         // draw label
+//         // thickness as 4, linetype as 16 - antiaxis
+//         Rect rec = imgData.bbox.boundingRect();
+//         // put text aside boundingbox
+//         // https://stackoverflow.com/questions/56108183/python-opencv-cv2-drawing-rectangle-with-text
+//         cv::putText(frame, imgData.label, Point(rec.x, rec.y - 10), FONT_HERSHEY_COMPLEX, 2, Scalar(150, 150, 150), 4, 16);
+
+//         cv::imshow("Video", frame);
+//         if (cv::waitKey(10) == 'q') {
+//             break;
+//         }
+//     }
+
+//     delete capdev;
+//     return (0);
+// }
+
+// Display features in video frame
+int process::displayResultsWithFeaturesInVideoFrame(cv::Mat &frame, ImgData &imgData) {
+    // draw countours
+    cv::drawContours(frame, imgData.contours, 0, Scalar(120, 80, 255), 6);
+
+    // draw bounding box
+    Point2f corners[4];
+    imgData.bbox.points(corners);
+    for (int j = 0; j < 4; j++) {
+        // cv::line(thresholded, corners[j], corners[(j + 1) % 4], Scalar(220, 230, 80), 4);
+        cv::line(frame, corners[j], corners[(j + 1) % 4], Scalar(255, 0, 0), 1);
+    }
+
+    // draw axes
+    line(frame, imgData.axisEndPoints[0], imgData.axisEndPoints[2], Scalar(0, 220, 200), 1);
+    line(frame, imgData.axisEndPoints[1], imgData.axisEndPoints[3], Scalar(0, 220, 200), 1);
+
+    // draw label
+    // thickness as 4, linetype as 16 - antiaxis
+    Rect rec = imgData.bbox.boundingRect();
+    // put text aside boundingbox
+    // https://stackoverflow.com/questions/56108183/python-opencv-cv2-drawing-rectangle-with-text
+    cv::putText(frame, imgData.label, Point(rec.x, rec.y - 10), FONT_HERSHEY_COMPLEX, 2, Scalar(0, 128, 255), 3, 16);
+
+    return (0);
 }

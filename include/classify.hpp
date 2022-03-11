@@ -16,6 +16,8 @@ double calculateStdDev(vector<double> &data);
 string classifyObject(Feature &src, map<string, vector<Feature>> &db, Feature &stdDevFeature);
 double euclideanDist(Feature &src, Feature &cmp, Feature &stdDevFeature);
 
+string classifyObjectByKNN(Feature &src, map<string, vector<Feature>> &db, Feature &stdDevFeature);
+
 }  // namespace classify
 
 #endif /* classify_hpp */
